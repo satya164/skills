@@ -1,6 +1,6 @@
 ---
 name: optimize-typescript-performance
-description: Optimize TypeScript type-checking and editor performance in libraries or apps with complex generic types. Use when Codex needs to diagnose slow `tsc`, sluggish language-service/editor behavior, high type instantiations, TS2589-style deep instantiation errors, expensive overloads, recursive conditional or mapped types, route-tree-style inference, or public APIs whose type surface needs to scale.
+description: Optimize TypeScript type-checking and editor performance in libraries or apps with complex generic types. Use when diagnosing slow `tsc`, sluggish language-service/editor behavior, high type instantiations, TS2589-style deep instantiation errors, expensive overloads, recursive conditional or mapped types, route-tree-style inference, or public APIs whose type surface needs to scale.
 ---
 
 # Optimize TypeScript Performance
@@ -16,6 +16,8 @@ Use this skill to reduce TypeScript checker and language-service work while pres
      ```
    - Track `Types`, `Instantiations`, `Memory used`, `Check time`, and `Total time`.
    - Treat `Instantiations` as the most stable proxy for checker work. Wall time is useful but noisier.
+   - For libraries, measure declaration emit (`tsc --emitDeclarationOnly`) separately. A large share of cost can be the library type-checking itself, which declaration emit exposes.
+   - Caveat: `Instantiations` maps reliably to wall time under `tsc`. Under the parallel Go compiler (`tsgo`/TypeScript 7), a widely-referenced type can be instantiated once per worker, so the total maps less directly to wall-clock time.
    - If the reported problem is editor latency, also measure `tsserver` operations: first semantic diagnostics after opening a file, hover/quickinfo, completion, and semantic diagnostics after a small edit.
 
 2. Locate the expensive shape.
@@ -119,6 +121,12 @@ type PickFromList<
 
 Avoid repeating `BuildLargeList<Source>` in multiple positions. Repetition can push otherwise-correct types over TypeScript's instantiation-depth budget.
 
+This is reliable when the bound result is read from several positions. Binding a single-position normalization the same way is an experiment, not a guaranteed win, so measure before keeping it:
+
+```ts
+type Result<T, Normalized = Normalize<T>> = BuildResult<Normalized>;
+```
+
 ### Avoid Redundant Constraint Capture
 
 Use this when a conditional type captures a value only to re-assert the same constraint required by a helper.
@@ -153,6 +161,8 @@ type Api<T> = {
 ```
 
 Avoid anonymous conditional types embedded in several public members. Named aliases give the checker a reusable target.
+
+A named type is a cache point only when it is used from multiple places with the *same* arguments. Wrapping a conditional that still varies per call site in another named layer adds instantiations instead of removing them. Measure before keeping such a split: prefer removing the computation over merely renaming it.
 
 ### Hoist Parameter-Independent Types
 
@@ -209,11 +219,72 @@ Avoid rebuilding a full generic object type for each concrete input. A self-type
 
 ### Use Variance Annotations When Sound
 
-Use this when exported generic object types are repeatedly related and TypeScript supports variance annotations.
+Use this when an exported generic object type is repeatedly related, and in particular when a type parameter flows into conditional types.
 
-Prefer explicit `in`, `out`, or `in out` annotations only when the type parameter's usage is actually sound for that variance. Correct annotations can prevent expensive structural variance measurement.
+When a type parameter flows into a conditional type, the compiler's variance probing is marked unreliable and it falls back to full structural comparison on every relation. Annotating the parameter `in out` (invariant) makes the compiler relate instantiations by their type arguments directly, skipping the probe and the structural fallback:
 
-Avoid guessing. Incorrect variance annotations are type-safety bugs.
+```ts
+interface Api_Core<in out T, in out U> {
+  // ...
+}
+```
+
+`in out` is the most restrictive annotation, so it always passes the compiler's variance check soundly: narrowing a parameter to invariant only removes assignments that were already allowed, it never introduces an unsound one. The check does not catch over-restriction, though. Forcing a genuinely covariant parameter to invariant still compiles but rejects valid assignments — for example, making a covariant value parameter invariant breaks the widening from `Box<string>` to `Box<unknown>` that callers rely on. Only annotate parameters that are invariant in practice, and treat a failing build as the real check.
+
+### Hand-Write Intersections For Statically-Known Members
+
+Use this when a type intersects a fixed, known-ahead-of-time set of members but builds that intersection with `UnionToIntersection`.
+
+`UnionToIntersection` is the standard user-defined helper for turning a union into an intersection:
+
+```ts
+type UnionToIntersection<T> = (
+  T extends any ? (x: T) => void : never
+) extends (x: infer R) => void
+  ? R
+  : never;
+```
+
+It distributes the union into one function type per member and infers their intersection from a contravariant position. It is expensive, and none of it caches when the union's identity varies with a type parameter. Where the members are statically known, write the intersection directly:
+
+```ts
+type Options_All<T, U> = Options_Core<T, U> &
+  Partial<
+    Options_ModuleA<T, U> &
+      Options_ModuleB &
+      // ...the other known modules...
+      Options_Plugins<T, U>
+  >;
+```
+
+Keep `UnionToIntersection` only for members that genuinely vary with a type parameter, such as user-registered plugins, and put it behind a guard so the expensive path is skipped when none exist:
+
+```ts
+type Options_Plugins<T, U> = [
+  Exclude<keyof Options_Map<T, U>, BuiltInKeys>,
+] extends [never]
+  ? unknown
+  : UnionToIntersection</* plugin entries only */>;
+```
+
+### Use Broad Internal Types For Hot Internal Paths
+
+Use this when internal library code threads a public type assembled from a conditional selection of members through many generic functions.
+
+Internal code rarely needs the conditional view. Define broad `*_All` types whose slots are all present regardless of registration, and relate those internally instead of the public conditional type:
+
+```ts
+interface Api_Internal<in out T, in out U>
+  extends Api_PartA<T, U>,
+    Api_PartB<T, U> {
+  options: Options_All<T, U>;
+  initialState: State_All;
+}
+```
+
+The internal type is then an interface with statically-known members and a stable identity, so the compiler relates two instantiations without re-expanding the conditional on every internal call. The public type is untouched, so inference at call sites is unchanged.
+
+Pair this with variance annotations. Converting a conditional-alias internal type to an interface can regress on its own — a fully materialized interface whose parameters flow into conditionals hits the structural-fallback path above — and only becomes a win once those parameters are annotated `in out`.
 
 ### Use The Weakest Internal Guard That Proves The Branch
 
@@ -338,15 +409,26 @@ Prefer explicit discriminants such as `from`, `to`, `kind`, `operator`, `schema`
 
 Avoid loose modes that intentionally collapse everything into one broad union unless the call site really needs them.
 
-### Move Expensive RHS Work Into Generic Parameters Carefully
+### Pass Explicit Type Arguments To Construction Helpers
 
-Use this as an experiment when a type alias repeatedly performs expensive normalization.
+Use this when a generic helper is called with an anonymous object literal, often a spread, and must infer its type parameters from that object's shape.
+
+Inference from an anonymous object is far more expensive than a plain assignability check: the compiler must solve for the type parameters before it can check anything. Pass the type arguments explicitly so it only has to check assignability:
 
 ```ts
-type Result<T, Normalized = Normalize<T>> = BuildResult<Normalized>;
+const instance = build<T, U>({
+  ...options,
+  // same object as below
+});
 ```
 
-This is not universally faster. Measure before keeping it.
+Avoid relying on inference from the literal:
+
+```ts
+const instance = build({ /* same object */ });
+```
+
+Passing an already-typed variable instead of a literal has the same effect. Audit construction helpers and hooks for this pattern. A single such call can dominate a package's check time.
 
 ### Avoid Recursive Path Types On Recursive Data
 
@@ -355,16 +437,17 @@ Use this when path/key helpers traverse recursive data.
 Prefer flattening the input type before passing it to path helpers:
 
 ```ts
-type FormRow = Omit<Row, "subRows">;
+type FlatNode = Omit<TreeNode, "children">;
 ```
 
-Avoid feeding recursive fields such as `children`, `subRows`, or `parent` into deep key/path utilities. They can cause TS2589 or very high instantiation counts.
+Avoid feeding recursive fields such as `children` or `parent` into deep key/path utilities. They can cause TS2589 or very high instantiation counts.
 
 ## What To Avoid
 
 - Do not optimize based on intuition alone. Type checker performance is often counterintuitive.
 - Do not replace precise public types with `any`, broad `unknown`, or assertions just to reduce instantiations.
 - Do not assume fewer lines of types means faster checking.
+- Do not assume naming or splitting a type always helps. A named type is a cache point only when reused with identical arguments; otherwise it just adds a layer.
 - Do not trust one benchmark expression. Measure a representative matrix.
 - Do not optimize only full-program `tsc` time when the reported pain is editor latency.
 
@@ -384,6 +467,7 @@ When presenting a change, include:
 - Gel: "An approach to optimizing TypeScript type checking performance" - diagnostics, traces, `@ark/attest`, BAM, overload consolidation, conditional ordering, interfaces over intersections, named conditional types. https://www.geldata.com/blog/an-approach-to-optimizing-typescript-type-checking-performance
 - TanStack Router: "A milestone for TypeScript Performance in TanStack Router" - generated route maps, avoiding whole-tree inference, language-service tracing, explicit `from`/`to` narrowing. https://tanstack.com/blog/tanstack-router-typescript-performance
 - TanStack Table V9: "Taking Form" - feature registries, type-safe opt-in APIs, stable registries, and performance work that preserves type safety. https://tanstack.com/blog/tanstack-table-v9-taking-form
+- TanStack Table V9: "TypeScript Performance in TanStack Table V9" - named feature-map interfaces over hand-written conditional unions, broad `*_All` internal types, hand-written intersections for statically-known member sets, `in out` variance annotations when parameters flow into conditionals, explicit type arguments at construction sites, and the limit of the "name everything" rule. https://tanstack.com/blog/tanstack-table-v9-typescript-performance
 - TanStack Intent: "Ship Agent Skills with your npm Packages" - keep agent guidance versioned with the package so type-performance rules match the actual API version. https://tanstack.com/blog/from-docs-to-agents
 - React Navigation PR #13080 - reusable type-bag interfaces and shared factories. https://github.com/react-navigation/react-navigation/pull/13080
 - React Navigation PR #13081 - variance annotations, cached intermediate types, and weak internal guards. https://github.com/react-navigation/react-navigation/pull/13081
