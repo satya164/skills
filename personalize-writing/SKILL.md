@@ -1,6 +1,6 @@
 ---
 name: personalize-writing
-description: Write or rewrite technical articles, blog posts, guides, and other prose in a practical, conversational voice. Use whenever writing or rewording technical content where tone, word choice, sentence construction, rhythm, transitions, punctuation, or local formatting should match this style.
+description: Write or rewrite technical articles, blog posts, guides, comments, and other prose in a practical, conversational voice. Use whenever writing or rewording technical content where tone, word choice, sentence construction, rhythm, transitions, punctuation, or local formatting should match this style.
 ---
 
 # Personalize writing
