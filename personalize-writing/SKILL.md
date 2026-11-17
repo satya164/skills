@@ -36,6 +36,16 @@ In the inclusive `we` voice, rewrite impersonal explanatory sentences through th
 - Phrase behavior, causes, consequences, limitations, and opinions with concrete verbs. Avoid abstract guarantees, detached importance claims, slogan-like contrasts, paired benefits, and promotional wording.
 - Phrase an existing limitation in the same conversational voice. Forms such as `One catch is...`, `But...`, and `Here, we can't...` usually sound more natural than a detached statement.
 
+## One point per sentence
+
+- Do not tack a second fact onto the end of a sentence. The usual signs are a trailing `too`, `also`, or `as well`, a closing `, and ...` clause on a new topic, and a closing `, which is ...` clause that adds a new fact.
+- A clause that explains the point (its cause, condition, contrast, or consequence) belongs in the sentence. A separate fact does not.
+- Fix it in one of three ways:
+  - If the two facts are parallel, merge them into one statement: `The cache is cleared on logout, and on token refresh too` becomes `The cache is cleared on logout and on token refresh`.
+  - If the second fact is separate, give it its own sentence, written from the reader's side: `Press q to cancel the build, and watch mode continues` becomes `Press q to cancel the build. You stay in watch mode.`
+  - If the second fact only labels the first, say what the reader can do with it: `The first matching route is used, which is the one shown in the devtools` becomes `The first matching route is used. You can see which one in the devtools.`
+- Do not start the new sentence with a pointer such as `That is also...` or `This is the same...`. It is the same tacked-on fact with a period in front of it.
+
 ## Subjects and agents
 
 - Do not write objects like people. A component, option, tool, or other piece of software is not the subject of an action verb, in reference docs as much as in prose. Avoid `the flag enables caching`, `the hook lets users subscribe to changes`, `the compiler sees the file as a module`, and `` `timeout` sets the request timeout``.
@@ -43,7 +53,6 @@ In the inclusive `we` voice, rewrite impersonal explanatory sentences through th
   - `A background job lets users export their data` becomes `Users can export their data with a background job`.
   - `The compiler sees the file as a module` becomes `The file is treated as a module`.
   - `The component takes its title from the first child` becomes `Its title comes from the first child`.
-  - ``The option was renamed to `retryDelay` and controls the wait between retries`` becomes ``The option was renamed to `retryDelay`, which is used for the wait between retries``.
 - Prefer `is used for` to `its value is`, which reads stilted.
 - In reference entries, put the outcome first in the passive (``The request timeout is set by `timeout` ``) or make the identifier a definition-list label (`` `timeout`: sets the request timeout``).
 
@@ -62,6 +71,6 @@ These apply in the inclusive `we` voice. In other voices, keep the same concrete
 - Use a colon to introduce code, a command, a list, or an example.
 - When a long sentence contains several parallel items, cases, conditions, steps, or tradeoffs, split them into bullet points so each item is easy to scan. Keep connected reasoning in prose, and keep the bullet items concise and grammatically parallel.
 
-## Style check
+---
 
-Read the text aloud. Confirm the person matches the document type and stays the same within each section. In the inclusive `we` voice, check each sentence that explains an action, capability, mechanism, or result for whether a `we` construction would sound more natural. Rewrite any passage that still reads like code followed by definitions, even if `we` appears elsewhere. Then check every sentence whose subject is a component, option, tool, or other piece of software. If the verb is an action, rewrite it as described in Subjects and agents.
+Read the revised passage as a whole. Fix repetition, choppy rhythm, and abrupt transitions, and confirm that the technical meaning is preserved.
