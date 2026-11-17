@@ -34,6 +34,12 @@ In the inclusive `we` voice, rewrite impersonal explanatory sentences through th
 - Use natural cues such as `Here`, `Now`, `One catch is...`, `Luckily`, `Unfortunately`, `Generally`, `such as`, `like`, and `etc.` when they fit. Do not add them mechanically.
 - Keep most sentences short or medium length. Use a longer sentence when a cause, condition, contrast, or consequence belongs with the point.
 - Phrase behavior, causes, consequences, limitations, and opinions with concrete verbs. Avoid abstract guarantees, detached importance claims, slogan-like contrasts, paired benefits, and promotional wording.
+- Put a negative on the verb, the way people say it, not on the object. Prefer `doesn't save anything` to `saves nothing`, `doesn't take any commands` to `takes no commands`, and `doesn't have a terminal` to `has no terminal`.
+- Cut `own`, `itself`, and `of its own` when they only add emphasis. Prefer `doesn't have a timeout` to `has no timeout of its own`, and `the test's steps` to `the test's own steps`. If they mark a real contrast, say the contrast: prefer `the same browser the test is using` to `the test's own browser`.
+- Don't define a thing through stacked clauses about what happens to it. Name the thing, and let the details follow in their own sentences: prefer `Options for holding a run at steps and pauses` to `The hook that a run's attempts wait at, with flags for what waits there`.
+- Don't use `what waits` or `what goes back` as a noun. Name it: prefer `the reply` to `what goes back`.
+- Don't wedge a condition into the middle of a sentence. Put it at the end or in its own sentence: prefer `It's called at every pause, and before every step when steps is set` to `It's called for every pause and, when steps is set, every held step`.
+- Avoid stiff or old-fashioned phrases such as `at once`, `go on`, `let go`, `upon`, and `thereafter`. Prefer `right away`, `continue`, and `after that`.
 - Phrase an existing limitation in the same conversational voice. Forms such as `One catch is...`, `But...`, and `Here, we can't...` usually sound more natural than a detached statement.
 
 ## One point per sentence
@@ -45,6 +51,7 @@ In the inclusive `we` voice, rewrite impersonal explanatory sentences through th
   - If the second fact is separate, give it its own sentence, written from the reader's side: `Press q to cancel the build, and watch mode continues` becomes `Press q to cancel the build. You stay in watch mode.`
   - If the second fact only labels the first, say what the reader can do with it: `The first matching route is used, which is the one shown in the devtools` becomes `The first matching route is used. You can see which one in the devtools.`
 - Do not start the new sentence with a pointer such as `That is also...` or `This is the same...`. It is the same tacked-on fact with a period in front of it.
+- Don't split a sentence if the result is a run of clipped ones. Merge the facts that belong together, or use a short list.
 
 ## Subjects and agents
 
@@ -53,6 +60,7 @@ In the inclusive `we` voice, rewrite impersonal explanatory sentences through th
   - `A background job lets users export their data` becomes `Users can export their data with a background job`.
   - `The compiler sees the file as a module` becomes `The file is treated as a module`.
   - `The component takes its title from the first child` becomes `Its title comes from the first child`.
+- Don't make an abstract noun the subject of an action, such as `a rejection fails the test` or `an exit removes the file`. Say what happens: `if it rejects, the test fails`.
 - Prefer `is used for` to `its value is`, which reads stilted.
 - In reference entries, put the outcome first in the passive (``The request timeout is set by `timeout` ``) or make the identifier a definition-list label (`` `timeout`: sets the request timeout``).
 
@@ -65,12 +73,21 @@ These apply in the inclusive `we` voice. In other voices, keep the same concrete
 - Use the exact identifier when needed for clarity, but do not build a sequence of sentences where every identifier is followed by a definition.
 - Prefer `we can`, `we need`, `we get`, `we still have`, `then we`, `here we`, and `now we` to detached capability or result statements.
 
+## Code comments
+
+- A function's first line says what it does, and can start with a verb (`Returns the socket path for a directory`).
+- A type or a field doesn't do anything. Say what it is, and for an option, when to set it: prefer `Set steps to hold every step before it runs` to `Whether every step is held`.
+- After the first line, write normal sentences with a subject. Don't chain verb fragments such as `Resolves to continue, and rejects to fail`.
+- Leave out internal details the reader of that comment doesn't need.
+- Group related facts into short paragraphs, with a blank comment line between them.
+
 ## Punctuation and local formatting
 
 - Use parentheses for quick examples, platform details, qualifications, and short asides. Do not use em dashes.
+- Don't use semicolons. Use a period or a comma.
 - Use a colon to introduce code, a command, a list, or an example.
-- When a long sentence contains several parallel items, cases, conditions, steps, or tradeoffs, split them into bullet points so each item is easy to scan. Keep connected reasoning in prose, and keep the bullet items concise and grammatically parallel.
+- When a sentence contains several parallel items, cases, conditions, steps, or tradeoffs, split them into bullet points so each item is easy to scan. Do this for parallel outcomes even when the sentence isn't long, such as what happens when a promise resolves and when it rejects. Keep connected reasoning in prose, and keep the bullet items concise and grammatically parallel.
 
 ---
 
-Read the revised passage as a whole. Fix repetition, choppy rhythm, and abrupt transitions, and confirm that the technical meaning is preserved.
+Read the revised passage as a whole, and ask of each sentence whether an engineer would say it aloud to another engineer. Fix repetition, choppy rhythm, and abrupt transitions, and confirm that the technical meaning is preserved.
